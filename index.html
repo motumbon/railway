@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Actividades en Terreno</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="api.js"></script>
+    <script src="indexedDB.js"></script>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="page active">
+        <div class="login-container">
+            <div class="title-container">
+                <div class="executive-icon">
+                </div>
+                <h1>Registro de Actividades en Terreno</h1>
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Usuario o email:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Contraseña:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit">Iniciar Sesión</button>
+                <div class="error-message" id="loginError"></div>
+            </form>
+            <p>¿No tienes cuenta? <a href="#" id="showRegister">Crear cuenta</a></p>
+        </div>
+    </div>
+
+    <!-- Register Page -->
+    <div id="registerPage" class="page">
+        <div class="register-container">
+            <h1>Crear Cuenta</h1>
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="newUsername">Usuario:</label>
+                    <input type="text" id="newUsername" name="newUsername" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Contraseña:</label>
+                    <input type="password" id="newPassword" name="newPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirmar Contraseña:</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                </div>
+                <button type="submit">Crear Cuenta</button>
+                <div class="error-message" id="registerError"></div>
+            </form>
+            <p><a href="#" id="showLogin">¿Ya tienes cuenta? Iniciar sesión</a></p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboardPage" class="page">
+        <div class="dashboard-container">
+            <header class="dashboard-header">
+                <h1>Panel de Seguimiento</h1>
+                <div class="user-info">
+                    <!-- Menu Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="menuDropdownBtn" class="dropdown-btn">
+                            Menu <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="menuDropdown" class="dropdown-menu" style="display: none;">
+                            <div class="dropdown-item has-submenu" id="activitiesSubmenu">
+                                <span>Actividades ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="completedActivitiesBtn">Completadas</button>
+                                    <button class="submenu-item" id="developmentActivitiesBtn">En Desarrollo</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="tasksSubmenu">
+                                <span>Tareas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="pendingTasksBtn">Activas</button>
+                                    <button class="submenu-item" id="completedTasksBtn">Completadas</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="notesSubmenu">
+                                <span>Notas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="personalNotesBtn">Personales</button>
+                                    <button class="submenu-item" id="sharedNotesBtn">Compartidas</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="notifications-container">
+                        <button id="notificationsBtn" class="notifications-btn">
+                            🔔 <span id="notificationCount" class="notification-count" style="display: none;">0</span>
+                        </button>
+                        <div id="notificationsDropdown" class="notifications-dropdown" style="display: none;">
+                            <div class="notifications-header">
+                                <h4>Notificaciones</h4>
+                                <button id="clearAllNotifications" class="clear-all-btn">Limpiar Todo</button>
+                            </div>
+                            <div id="notificationsList" class="notifications-list">
+                                <p class="no-notifications">No hay notificaciones</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="userDropdownBtn" class="dropdown-btn user-dropdown-btn">
+                            <span id="currentUser"></span> <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="userDropdown" class="dropdown-menu" style="display: none;">
+                            <button class="dropdown-item" id="profileBtn">Mi Perfil</button>
+                            <button class="dropdown-item" id="logoutBtn">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <!-- Left Sidebar -->
+                <div class="sidebar">
+                    <h2>Lista de Usuarios</h2>
+                    
+                    <!-- Add Name Section -->
+                    <div class="add-name-section">
+                        <input type="text" id="nameInput" placeholder="Ingresar Nombre, Usuario o Email">
+                        <button id="addNameBtn">Agregar</button>
+                        <div id="userSuggestions" class="user-suggestions"></div>
+                    </div>
+                    
+                    <!-- Names List -->
+                    <div class="names-list">
+                        <ul id="namesList"></ul>
+                    </div>
+                    
+                    <!-- Delete Name Button -->
+                    <button id="deleteNameBtn" class="delete-btn" disabled>Borrar Nombre</button>
+                </div>
+                    
+                <!-- Main Content Area -->
+                <div class="main-content">
+                    <div class="content-left">
+                        <div id="activitiesContainer" style="display: none;">
+                            <div class="activities-header">
+                                <h3 id="selectedPersonTitle">Selecciona una persona</h3>
+                                <div class="header-controls">
+                                    <!-- Options Dropdown Menu -->
+                                    <div id="optionsDropdown" class="options-dropdown" style="display: none;">
+                                        <button id="optionsBtn" class="options-btn">Opciones ▼</button>
+                                        <div id="optionsMenu" class="options-menu">
+                                            <div class="option-item" id="exportOption">
+                                                <span>Exportar a Excel</span>
+                                            </div>
+                                            <div class="option-item has-submenu" id="sortOption">
+                                                <span>Ordenar ▶</span>
+                                                <div class="submenu">
+                                                    <div class="submenu-item" data-sort="activityDate">Fecha de Actividad</div>
+                                                    <div class="submenu-item" data-sort="creationDate">Fecha de Creación</div>
+                                                    <div class="submenu-item" data-sort="alphabetical">Orden Alfabético</div>
+                                                </div>
+                                            </div>
+                                            <div class="option-item has-submenu" id="showOption">
+                                                <span>Mostrar ▶</span>
+                                                <div class="submenu">
+                                                    <div class="submenu-item" data-period="all">Todas</div>
+                                                    <div class="submenu-item" data-period="month">Este Mes</div>
+                                                    <div class="submenu-item" data-period="week">Esta Semana</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button id="addActivityBtn" class="add-activity-btn" style="display: none;">Agregar Actividad</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Institutions Section -->
+                            <div id="institutionsContainer" style="display: none;">
+                                <div class="institutions-header">
+                                    <h4>Instituciones</h4>
+                                    <div class="institution-menu-container">
+                                        <button id="institutionMenuBtn" class="institution-menu-btn">+</button>
+                                        <div id="institutionDropdown" class="institution-dropdown" style="display: none;">
+                                            <button id="addInstitutionBtn" class="dropdown-option">Agregar Institución</button>
+                                            <button id="deleteInstitutionBtn" class="dropdown-option" disabled>Eliminar Institución</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="institutionsList" class="institutions-list"></div>
+                                
+                                <!-- Add Activity Button (appears when institution is selected) -->
+                                <div id="activityButtonContainer" style="display: none; margin-top: 15px; text-align: center;">
+                                    <button id="addActivityBtn2" class="add-activity-btn">Agregar Actividad</button>
+                                </div>
+                            </div>
+                            
+                            
+                            <!-- Actividades Realizadas -->
+                            <div id="completedActivitiesSection">
+                                <h4 class="activities-section-title">Actividades Realizadas</h4>
+                                <div id="completedActivitiesList" class="activities-list"></div>
+                                <div id="completedPagination" class="pagination-controls" style="display: none;">
+                                    <button id="prevCompletedBtn" class="pagination-btn">‹</button>
+                                    <span id="completedPageInfo" class="page-info">Página 1 de 1</span>
+                                    <button id="nextCompletedBtn" class="pagination-btn">›</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Actividades Programadas -->
+                            <div id="scheduledActivitiesSection">
+                                <h4 class="activities-section-title">Actividades Programadas</h4>
+                                <div id="scheduledActivitiesList" class="activities-list"></div>
+                                <div id="scheduledPagination" class="pagination-controls" style="display: none;">
+                                    <button id="prevScheduledBtn" class="pagination-btn">‹</button>
+                                    <span id="scheduledPageInfo" class="page-info">Página 1 de 1</span>
+                                    <button id="nextScheduledBtn" class="pagination-btn">›</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="contentMessage" class="content-message">
+                        Selecciona un nombre de la lista para ver sus actividades.
+                    </div>
+                </div>
+                
+                <div class="content-right">
+                    <div id="calendarContainer" class="calendar-container" style="display: none;">
+                        <div class="calendar-header">
+                            <button id="prevMonth" class="calendar-nav-btn">‹</button>
+                            <h3 id="calendarTitle">Enero 2025</h3>
+                            <button id="nextMonth" class="calendar-nav-btn">›</button>
+                        </div>
+                        <div class="calendar-grid">
+                            <div class="calendar-weekdays">
+                                <div class="weekday">Dom</div>
+                                <div class="weekday">Lun</div>
+                                <div class="weekday">Mar</div>
+                                <div class="weekday">Mié</div>
+                                <div class="weekday">Jue</div>
+                                <div class="weekday">Vie</div>
+                                <div class="weekday">Sáb</div>
+                            </div>
+                            <div id="calendarDays" class="calendar-days"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Settings Page -->
+    <div id="profilePage" class="page">
+        <div class="profile-container">
+            <header class="dashboard-header">
+                <h1>Mi Perfil</h1>
+                <div class="user-info">
+                    <!-- Menu Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="menuDropdownBtnProfile" class="dropdown-btn">
+                            Menu <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="menuDropdownProfile" class="dropdown-menu" style="display: none;">
+                            <div class="dropdown-item has-submenu" id="activitiesSubmenuProfile">
+                                <span>Actividades ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="completedActivitiesBtnProfile">Completadas</button>
+                                    <button class="submenu-item" id="developmentActivitiesBtnProfile">En Desarrollo</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="tasksSubmenuProfile">
+                                <span>Tareas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="pendingTasksBtnProfile">Activas</button>
+                                    <button class="submenu-item" id="completedTasksBtnProfile">Completadas</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="notesSubmenuProfile">
+                                <span>Notas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="personalNotesBtnProfile">Personales</button>
+                                    <button class="submenu-item" id="sharedNotesBtnProfile">Compartidas</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="notifications-container">
+                        <button id="notificationsBtnProfile" class="notifications-btn">
+                            🔔 <span id="notificationCountProfile" class="notification-count" style="display: none;">0</span>
+                        </button>
+                        <div id="notificationsDropdownProfile" class="notifications-dropdown" style="display: none;">
+                            <div class="notifications-header">
+                                <h4>Notificaciones</h4>
+                                <button id="clearAllNotificationsProfile" class="clear-all-btn">Limpiar Todo</button>
+                            </div>
+                            <div id="notificationsListProfile" class="notifications-list">
+                                <p class="no-notifications">No hay notificaciones</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="userDropdownBtnProfile" class="dropdown-btn">
+                            <span id="currentUserProfile"></span> <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="userDropdownProfile" class="dropdown-menu" style="display: none;">
+                            <button class="dropdown-item" id="profileBtnProfile">Mi Perfil</button>
+                            <button class="dropdown-item" id="logoutBtnProfile">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="profile-content">
+                <div class="profile-photo-section">
+                    <div class="photo-container">
+                        <img id="profilePhoto" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 24 24' fill='%23ccc'%3E%3Cpath d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/%3E%3C/svg%3E" alt="Foto de perfil">
+                        <div class="photo-overlay">
+                            <input type="file" id="photoInput" accept="image/*" style="display: none;">
+                            <button id="changePhotoBtn" class="change-photo-btn">Cambiar Foto</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <form id="profileForm" class="profile-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="profileUsername">Usuario:</label>
+                            <input type="text" id="profileUsername" name="profileUsername" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="profileEmail">Email:</label>
+                            <input type="email" id="profileEmail" name="profileEmail" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="firstName">Nombre:</label>
+                            <input type="text" id="firstName" name="firstName" placeholder="Ingresa tu nombre">
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Apellidos:</label>
+                            <input type="text" id="lastName" name="lastName" placeholder="Ingresa tus apellidos">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="position">Cargo:</label>
+                            <input type="text" id="position" name="position" placeholder="Ej: Desarrollador, Gerente, etc.">
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Teléfono:</label>
+                            <input type="tel" id="phone" name="phone" placeholder="Ej: +1 234 567 8900">
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="save-btn">Guardar Cambios</button>
+                        <button type="button" id="deleteAccountBtn" class="delete-account-btn">Eliminar Cuenta</button>
+                    </div>
+                    
+                    <div class="success-message" id="profileSuccess"></div>
+                    <div class="error-message" id="profileError"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Confirmation Page -->
+    <div id="emailConfirmationPage" class="page">
+        <div class="email-confirmation-container">
+            <div class="email-icon">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="#667eea">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.89 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+            </div>
+            <h1>¡Confirma tu cuenta!</h1>
+            <p>Hemos enviado un correo de confirmación a:</p>
+            <p class="email-address" id="confirmationEmail"></p>
+            <p>Revisa tu bandeja de entrada y haz clic en "Confirmar Cuenta" para activar tu usuario.</p>
+            
+            <div class="email-simulation">
+                <h3>📧 Simulación de Email</h3>
+                <div class="email-preview">
+                    <div class="email-header">
+                        <strong>De:</strong> Sistema de Seguimiento de Actividades<br>
+                        <strong>Para:</strong> <span id="emailTo"></span><br>
+                        <strong>Asunto:</strong> ¡Bienvenido! Confirma tu cuenta
+                    </div>
+                    <div class="email-body">
+                        <h2>¡Bienvenido al Sistema de Seguimiento de Actividades!</h2>
+                        <p>Hola <span id="emailUsername"></span>,</p>
+                        <p>Gracias por registrarte en nuestro sistema. Para completar tu registro y comenzar a usar la aplicación, necesitas confirmar tu cuenta.</p>
+                        <div class="email-button-container">
+                            <button id="confirmAccountBtn" class="email-confirm-btn">Confirmar Cuenta</button>
+                        </div>
+                        <p><small>Si no creaste esta cuenta, puedes ignorar este mensaje.</small></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="confirmation-actions">
+                <button id="backToLoginBtn" class="back-to-login-btn">Volver al Login</button>
+                <button id="resendEmailBtn" class="resend-email-btn">Reenviar Email</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Creation Modal -->
+    <div id="activityModal" class="modal">
+        <div class="modal-content activity-modal">
+            <h2 id="activityModalTitle">Agregar Actividad</h2>
+            <form id="activityForm">
+                <div class="form-group">
+                    <label for="activitySubject">Asunto (máx. 30 caracteres):</label>
+                    <input type="text" id="activitySubject" name="activitySubject" maxlength="30" required>
+                    <div class="character-counter">
+                        <span id="subjectCounter">0/30</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="activityPersonName">Nombre:</label>
+                    <input type="text" id="activityPersonName" name="activityPersonName" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="activityInstitution">Institución:</label>
+                    <select id="activityInstitution" name="activityInstitution" required>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="activityComments">Comentarios (máx. 500 caracteres):</label>
+                    <textarea id="activityComments" name="activityComments" maxlength="500" rows="4" required></textarea>
+                    <div class="character-counter">
+                        <span id="commentsCounter">0/500</span>
+                    </div>
+                </div>
+                <div id="schedulingFields" class="scheduling-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="activityDate">Fecha de programación:</label>
+                        <input type="date" id="activityDate" name="activityDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="activityHour">Hora:</label>
+                        <div class="time-inputs">
+                            <select id="activityHour" name="activityHour">
+                                <option value="00">00</option>
+                                <option value="01">01</option>
+                                <option value="02">02</option>
+                                <option value="03">03</option>
+                                <option value="04">04</option>
+                                <option value="05">05</option>
+                                <option value="06">06</option>
+                                <option value="07">07</option>
+                                <option value="08">08</option>
+                                <option value="09">09</option>
+                                <option value="10">10</option>
+                                <option value="11">11</option>
+                                <option value="12">12</option>
+                                <option value="13">13</option>
+                                <option value="14">14</option>
+                                <option value="15">15</option>
+                                <option value="16">16</option>
+                                <option value="17">17</option>
+                                <option value="18">18</option>
+                                <option value="19">19</option>
+                                <option value="20">20</option>
+                                <option value="21">21</option>
+                                <option value="22">22</option>
+                                <option value="23">23</option>
+                            </select>
+                            <span>:</span>
+                            <select id="activityMinute" name="activityMinute">
+                                <option value="00">00</option>
+                                <option value="15">15</option>
+                                <option value="30">30</option>
+                                <option value="45">45</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="shareActivity" name="shareActivity">
+                        <label for="shareActivity">Compartir actividad con el usuario asociado</label>
+                        <small id="shareActivityNote" class="share-note" style="display: none;">El usuario debe tener una cuenta creada para poder compartir</small>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" id="confirmActivityBtn" class="confirm-btn">Confirmar</button>
+                    <button type="button" id="cancelActivityBtn" class="cancel-btn">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Activity Detail Modal -->
+    <div id="activityDetailModal" class="modal">
+        <div class="modal-content activity-detail-modal">
+            <h2 id="activityDetailTitle">Detalle de Actividad</h2>
+            <div class="activity-detail-content">
+                <div class="activity-info">
+                    <p><strong>Fecha:</strong> <span id="activityDetailDate"></span></p>
+                    <p><strong>Asunto:</strong> <span id="activityDetailSubject"></span></p>
+                    <div id="sharedByNote" class="shared-by-note" style="display: none;">
+                        <p><em>Compartida por <span id="sharedByUser"></span></em></p>
+                    </div>
+                </div>
+                <div class="activity-comments-section">
+                    <h4>Comentarios:</h4>
+                    <div id="activityDetailComments" class="activity-comments"></div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="editActivityBtn" class="edit-btn">Modificar</button>
+                <button id="deleteActivityBtn" class="delete-btn">Eliminar</button>
+                <button id="closeDetailBtn" class="cancel-btn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Institution Confirmation Modal -->
+    <div id="deleteInstitutionModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Confirmar Eliminación</h3>
+            <p>¿Estás seguro de que deseas eliminar esta institución? Esta acción no se puede deshacer.</p>
+            <div class="modal-actions">
+                <button id="confirmDeleteInstitutionBtn" class="confirm-btn">Eliminar</button>
+                <button id="cancelDeleteInstitutionBtn" class="cancel-btn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Institution Modal -->
+    <div id="institutionModal" class="modal">
+        <div class="modal-content">
+            <h3>Agregar Institución</h3>
+            <form id="institutionForm">
+                <div class="form-group">
+                    <label for="institutionName">Selecciona una institución:</label>
+                    <select id="institutionName" required>
+                        <option value="">-- Selecciona una institución --</option>
+                        <option value="Hospital Hernán Henríquez Aravena">Hospital Hernán Henríquez Aravena</option>
+                        <option value="Hospital Guillermo Grant Benavente">Hospital Guillermo Grant Benavente</option>
+                        <option value="Hospital las Higueras">Hospital las Higueras</option>
+                        <option value="Hospital Victor Ríos Ruiz">Hospital Victor Ríos Ruiz</option>
+                        <option value="Clínica Sanatorio Alemán">Clínica Sanatorio Alemán</option>
+                        <option value="Clínica Bio Bío">Clínica Bio Bío</option>
+                        <option value="Clínica Andes Salud Concepción">Clínica Andes Salud Concepción</option>
+                        <option value="Hospital Padre las Casas">Hospital Padre las Casas</option>
+                    </select>
+                </div>
+                <div class="modal-buttons">
+                    <button type="submit" id="confirmInstitutionBtn">Confirmar</button>
+                    <button type="button" id="cancelInstitutionBtn">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Activity Delete Confirmation Modal -->
+    <div id="deleteActivityModal" class="modal">
+        <div class="modal-content delete-modal">
+            <h2>Confirmar Eliminación</h2>
+            <p>¿Estás seguro de que quieres eliminar esta actividad?</p>
+            <div class="modal-buttons">
+                <button id="confirmDeleteActivityBtn" class="confirm-delete-btn">Eliminar</button>
+                <button id="cancelDeleteActivityBtn" class="cancel-btn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Excel Export Modal -->
+    <div id="excelExportModal" class="modal">
+        <div class="modal-content">
+            <h3>Exportar Actividades a Excel</h3>
+            <p>¿Qué mes desea exportar?</p>
+            <div class="export-form">
+                <div class="form-group">
+                    <label for="exportYear">Año:</label>
+                    <select id="exportYear" class="filter-select">
+                        <!-- Years will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="exportMonth">Mes:</label>
+                    <select id="exportMonth" class="filter-select">
+                        <option value="0">Enero</option>
+                        <option value="1">Febrero</option>
+                        <option value="2">Marzo</option>
+                        <option value="3">Abril</option>
+                        <option value="4">Mayo</option>
+                        <option value="5">Junio</option>
+                        <option value="6">Julio</option>
+                        <option value="7">Agosto</option>
+                        <option value="8">Septiembre</option>
+                        <option value="9">Octubre</option>
+                        <option value="10">Noviembre</option>
+                        <option value="11">Diciembre</option>
+                    </select>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" id="confirmExportBtn">Exportar</button>
+                    <button type="button" id="cancelExportBtn">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Activities Modal -->
+    <div id="calendarActivitiesModal" class="modal">
+        <div class="modal-content calendar-activities-modal">
+            <h2 id="calendarActivitiesTitle">Actividades del día</h2>
+            <div id="calendarActivitiesList" class="calendar-activities-list"></div>
+            <div class="modal-actions">
+                <button id="scheduleActivityBtn" class="confirm-btn">Programar Actividad</button>
+                <button id="closeCalendarActivitiesBtn" class="cancel-btn">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h2>Confirmar Eliminación de Cuenta</h2>
+            <p>¿Estás seguro de que deseas eliminar tu cuenta permanentemente?</p>
+            <p class="warning-text">Esta acción no se puede deshacer. Se eliminarán todos tus datos.</p>
+            <div class="modal-actions">
+                <button id="confirmDeleteBtn" class="confirm-btn">Confirmar</button>
+                <button id="cancelDeleteBtn" class="cancel-btn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Confirmation Modal -->
+    <div id="bulkDeleteModal" class="modal">
+        <div class="modal-content">
+            <h2>Confirmar Eliminación de Actividades</h2>
+            <p id="bulkDeleteMessage">¿Estás seguro de que deseas eliminar las actividades seleccionadas?</p>
+            <p class="warning-text">Esta acción no se puede deshacer.</p>
+            <div class="modal-actions">
+                <button id="confirmBulkDeleteBtn" class="confirm-btn">Eliminar</button>
+                <button id="cancelBulkDeleteBtn" class="cancel-btn">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completed Activities Page -->
+    <div id="completedActivitiesPage" class="page">
+        <div class="dashboard-container">
+            <header class="dashboard-header">
+                <h1>Actividades Completadas</h1>
+                <div class="user-info">
+                    <!-- Menu Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="menuDropdownBtnCompleted" class="dropdown-btn">
+                            Menu <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="menuDropdownCompleted" class="dropdown-menu" style="display: none;">
+                            <div class="dropdown-item has-submenu" id="activitiesSubmenuCompleted">
+                                <span>Actividades ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="completedActivitiesBtnCompleted">Completadas</button>
+                                    <button class="submenu-item" id="developmentActivitiesBtnCompleted">En Desarrollo</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="tasksSubmenuCompleted">
+                                <span>Tareas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="pendingTasksBtnCompleted">Activas</button>
+                                    <button class="submenu-item" id="completedTasksBtnCompleted">Completadas</button>
+                    <div class="notifications-container">
+                        <button id="notificationsBtnCompleted" class="notifications-btn">
+                            <span class="notification-icon">🔔</span>
+                            <span id="notificationCountCompleted" class="notification-count" style="display: none;">0</span>
+                        </button>
+                        <div id="notificationsDropdownCompleted" class="notifications-dropdown" style="display: none;">
+                            <div class="notifications-header">
+                                <h4>Notificaciones</h4>
+                                <button id="clearAllNotificationsCompleted" class="clear-all-btn">Limpiar Todo</button>
+                            </div>
+                            <div id="notificationsListCompleted" class="notifications-list">
+                                <p class="no-notifications">No hay notificaciones</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="userDropdownBtnCompleted" class="dropdown-btn">
+                            <span id="currentUserCompleted"></span> <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="userDropdownCompleted" class="dropdown-menu" style="display: none;">
+                            <button class="dropdown-item" id="profileBtnCompleted">Mi Perfil</button>
+                            <button class="dropdown-item" id="logoutBtnCompleted">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <div class="main-content">
+                    <div class="tasks-container">
+                        <div class="tasks-header">
+                            <h3>Actividades Completadas</h3>
+                            <button id="backToActiveActivitiesBtn" class="back-btn">Volver a Actividades Activas</button>
+                        </div>
+                        
+                        <div class="tasks-container-grid">
+                            <div id="completedActivitiesDisplay" class="tasks-grid">
+                                <!-- Completed activities will be populated here -->
+                            </div>
+                            <div id="noCompletedActivitiesMessage" class="no-tasks-message" style="display: none;">
+                                <p>No hay actividades completadas.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personal Notes Page -->
+    <div id="personalNotesPage" class="page">
+        <div class="dashboard-container">
+            <header class="dashboard-header">
+                <h1>Notas Personales</h1>
+                <div class="user-info">
+                    <!-- Menu Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="menuDropdownBtnNotes" class="dropdown-btn">
+                            Menu <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="menuDropdownNotes" class="dropdown-menu" style="display: none;">
+                            <div class="dropdown-item has-submenu" id="activitiesSubmenuNotes">
+                                <span>Actividades ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="completedActivitiesBtnNotes">Completadas</button>
+                                    <button class="submenu-item" id="developmentActivitiesBtnNotes">En Desarrollo</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="tasksSubmenuNotes">
+                                <span>Tareas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="pendingTasksBtnNotes">Activas</button>
+                                    <button class="submenu-item" id="completedTasksBtnNotes">Completadas</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="notesSubmenuNotes">
+                                <span>Notas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="personalNotesBtnNotes">Personales</button>
+                                    <button class="submenu-item" id="sharedNotesBtnNotes">Compartidas</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="notifications-container">
+                        <button id="notificationsBtnNotes" class="notifications-btn">
+                            🔔 <span id="notificationCountNotes" class="notification-count" style="display: none;">0</span>
+                        </button>
+                        <div id="notificationsDropdownNotes" class="notifications-dropdown" style="display: none;">
+                            <div class="notifications-header">
+                                <h4>Notificaciones</h4>
+                                <button id="clearAllNotificationsNotes" class="clear-all-btn">Limpiar Todo</button>
+                            </div>
+                            <div id="notificationsListNotes" class="notifications-list">
+                                <p class="no-notifications">No hay notificaciones</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="userDropdownBtnNotes" class="dropdown-btn">
+                            <span id="currentUserNotes"></span> <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="userDropdownNotes" class="dropdown-menu" style="display: none;">
+                            <button class="dropdown-item" id="profileBtnNotes">Mi Perfil</button>
+                            <button class="dropdown-item" id="logoutBtnNotes">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <div class="main-content">
+                    <div class="tasks-container">
+                        <div class="tasks-header">
+                            <h3>Notas Personales</h3>
+                            <button id="newNoteBtn" class="add-task-btn">Nueva Nota</button>
+                        </div>
+                        
+                        <div class="tasks-container-grid">
+                            <div id="notesList" class="tasks-grid">
+                                <!-- Notes will be populated here -->
+                            </div>
+                            <div id="noNotesMessage" class="no-tasks-message" style="display: none;">
+                                <p>No hay notas creadas.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shared Notes Page -->
+    <div id="sharedNotesPage" class="page">
+        <div class="dashboard-container">
+            <header class="dashboard-header">
+                <h1>Notas Compartidas</h1>
+                <div class="user-info">
+                    <!-- Menu Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="menuDropdownBtnSharedNotes" class="dropdown-btn">
+                            Menu <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="menuDropdownSharedNotes" class="dropdown-menu" style="display: none;">
+                            <div class="dropdown-item has-submenu" id="activitiesSubmenuSharedNotes">
+                                <span>Actividades ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="completedActivitiesBtnSharedNotes">Completadas</button>
+                                    <button class="submenu-item" id="developmentActivitiesBtnSharedNotes">En Desarrollo</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="tasksSubmenuSharedNotes">
+                                <span>Tareas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="pendingTasksBtnSharedNotes">Activas</button>
+                                    <button class="submenu-item" id="completedTasksBtnSharedNotes">Completadas</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="notesSubmenuSharedNotes">
+                                <span>Notas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="personalNotesBtnSharedNotes">Personales</button>
+                                    <button class="submenu-item" id="sharedNotesBtnSharedNotes">Compartidas</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="notifications-container">
+                        <button id="notificationsBtnSharedNotes" class="notifications-btn">
+                            🔔 <span id="notificationCountSharedNotes" class="notification-count" style="display: none;">0</span>
+                        </button>
+                        <div id="notificationsDropdownSharedNotes" class="notifications-dropdown" style="display: none;">
+                            <div class="notifications-header">
+                                <h4>Notificaciones</h4>
+                                <button id="clearAllNotificationsSharedNotes" class="clear-all-btn">Limpiar Todo</button>
+                            </div>
+                            <div id="notificationsListSharedNotes" class="notifications-list">
+                                <p class="no-notifications">No hay notificaciones</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="userDropdownBtnSharedNotes" class="dropdown-btn">
+                            <span id="currentUserSharedNotes"></span> <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="userDropdownSharedNotes" class="dropdown-menu" style="display: none;">
+                            <button class="dropdown-item" id="profileBtnSharedNotes">Mi Perfil</button>
+                            <button class="dropdown-item" id="logoutBtnSharedNotes">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <div class="main-content">
+                    <div class="tasks-container">
+                        <div class="tasks-header">
+                            <h3>Notas Compartidas</h3>
+                        </div>
+                        
+                        <div class="tasks-container-grid">
+                            <div id="sharedNotesList" class="tasks-grid">
+                                <!-- Shared notes will be populated here -->
+                            </div>
+                            <div id="noSharedNotesMessage" class="no-tasks-message" style="display: none;">
+                                <p>No hay notas compartidas contigo.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Tasks Page -->
+    <div id="activeTasksPage" class="page">
+        <div class="dashboard-container">
+            <header class="dashboard-header">
+                <h1>Tareas Activas</h1>
+                <div class="user-info">
+                    <!-- Menu Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="menuDropdownBtnTasks" class="dropdown-btn">
+                            Menu <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="menuDropdownTasks" class="dropdown-menu" style="display: none;">
+                            <div class="dropdown-item has-submenu" id="activitiesSubmenuTasks">
+                                <span>Actividades ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="completedActivitiesBtnTasks">Completadas</button>
+                                    <button class="submenu-item" id="developmentActivitiesBtnTasks">En Desarrollo</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="tasksSubmenuTasks">
+                                <span>Tareas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="pendingTasksBtnTasks">Activas</button>
+                                    <button class="submenu-item" id="completedTasksBtnTasks">Completadas</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="notesSubmenuTasks">
+                                <span>Notas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="personalNotesBtnTasks">Personales</button>
+                                    <button class="submenu-item" id="sharedNotesBtnTasks">Compartidas</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="notifications-container">
+                        <button id="notificationsBtnTasks" class="notifications-btn">
+                            🔔 <span id="notificationCountTasks" class="notification-count" style="display: none;">0</span>
+                        </button>
+                        <div id="notificationsDropdownTasks" class="notifications-dropdown" style="display: none;">
+                            <div class="notifications-header">
+                                <h4>Notificaciones</h4>
+                                <button id="clearAllNotificationsTasks" class="clear-all-btn">Limpiar Todo</button>
+                            </div>
+                            <div id="notificationsListTasks" class="notifications-list">
+                                <p class="no-notifications">No hay notificaciones</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="userDropdownBtnTasks" class="dropdown-btn">
+                            <span id="currentUserTasks"></span> <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="userDropdownTasks" class="dropdown-menu" style="display: none;">
+                            <button class="dropdown-item" id="profileBtnTasks">Mi Perfil</button>
+                            <button class="dropdown-item" id="logoutBtnTasks">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <div class="main-content">
+                    <div class="tasks-container">
+                        <div class="tasks-header">
+                            <h3>Gestión de Tareas Activas</h3>
+                            <button id="addTaskBtn" class="add-task-btn">Nueva Tarea</button>
+                        </div>
+                        
+                        <div class="tasks-container-grid">
+                            <div id="activeTasksList" class="tasks-grid">
+                                <!-- Tasks will be populated here -->
+                            </div>
+                            <div id="noActiveTasksMessage" class="no-tasks-message" style="display: none;">
+                                <p>No hay tareas activas. <a href="#" id="createFirstTask">Crear primera tarea</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completed Tasks Page -->
+    <div id="completedTasksPage" class="page">
+        <div class="dashboard-container">
+            <header class="dashboard-header">
+                <h1>Tareas Completadas</h1>
+                <div class="user-info">
+                    <!-- Menu Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="menuDropdownBtnCompletedTasks" class="dropdown-btn">
+                            Menu <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="menuDropdownCompletedTasks" class="dropdown-menu" style="display: none;">
+                            <div class="dropdown-item has-submenu" id="activitiesSubmenuCompletedTasks">
+                                <span>Actividades ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="completedActivitiesBtnCompletedTasks">Completadas</button>
+                                    <button class="submenu-item" id="developmentActivitiesBtnCompletedTasks">En Desarrollo</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="tasksSubmenuCompletedTasks">
+                                <span>Tareas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="pendingTasksBtnCompletedTasks">Activas</button>
+                                    <button class="submenu-item" id="completedTasksBtnCompletedTasks">Completadas</button>
+                                </div>
+                            </div>
+                            <div class="dropdown-item has-submenu" id="notesSubmenuCompletedTasks">
+                                <span>Notas ▶</span>
+                                <div class="submenu">
+                                    <button class="submenu-item" id="personalNotesBtnCompletedTasks">Personales</button>
+                                    <button class="submenu-item" id="sharedNotesBtnCompletedTasks">Compartidas</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="notifications-container">
+                        <button id="notificationsBtnCompletedTasks" class="notifications-btn">
+                            🔔 <span id="notificationCountCompletedTasks" class="notification-count" style="display: none;">0</span>
+                        </button>
+                        <div id="notificationsDropdownCompletedTasks" class="notifications-dropdown" style="display: none;">
+                            <div class="notifications-header">
+                                <h4>Notificaciones</h4>
+                                <button id="clearAllNotificationsCompletedTasks" class="clear-all-btn">Limpiar Todo</button>
+                            </div>
+                            <div id="notificationsListCompletedTasks" class="notifications-list">
+                                <p class="no-notifications">No hay notificaciones</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Dropdown -->
+                    <div class="dropdown-container">
+                        <button id="userDropdownBtnCompletedTasks" class="dropdown-btn">
+                            <span id="currentUserCompletedTasks"></span> <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div id="userDropdownCompletedTasks" class="dropdown-menu" style="display: none;">
+                            <button class="dropdown-item" id="profileBtnCompletedTasks">Mi Perfil</button>
+                            <button class="dropdown-item" id="logoutBtnCompletedTasks">Cerrar Sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="dashboard-content">
+                <div class="main-content">
+                    <div class="tasks-container">
+                        <div class="tasks-header">
+                            <h3>Tareas Completadas</h3>
+                            <div class="header-controls">
+                                <!-- Options Dropdown Menu for Completed Tasks -->
+                                <div id="optionsDropdownCompletedTasks" class="options-dropdown" style="display: block;">
+                                    <button id="optionsBtnCompletedTasks" class="options-btn">Opciones ▼</button>
+                                    <div id="optionsMenuCompletedTasks" class="options-menu">
+                                        <div class="option-item" id="exportOptionCompletedTasks">
+                                            <span>Exportar a Excel</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button id="backToActiveTasksBtn" class="back-btn">Volver a Tareas Activas</button>
+                            </div>
+                        </div>
+                        
+                        <div class="tasks-container-grid">
+                            <div id="completedTasksList" class="tasks-grid">
+                                <!-- Completed tasks will be populated here -->
+                            </div>
+                            <div id="noCompletedTasksMessage" class="no-tasks-message" style="display: none;">
+                                <p>No hay tareas completadas.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Creation Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content task-modal">
+            <h2 id="taskModalTitle">Nueva Tarea</h2>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="taskName">Nombre de la Tarea:</label>
+                    <input type="text" id="taskName" name="taskName" required maxlength="100">
+                    <div class="character-counter">
+                        <span id="taskNameCounter">0/100</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="taskDescription">Descripción (opcional):</label>
+                    <textarea id="taskDescription" name="taskDescription" rows="3" maxlength="300"></textarea>
+                    <div class="character-counter">
+                        <span id="taskDescriptionCounter">0/300</span>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" id="confirmTaskBtn" class="confirm-btn">Crear Tarea</button>
+                    <button type="button" id="cancelTaskBtn" class="cancel-btn">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Task Comment Modal -->
+    <div id="taskCommentModal" class="modal">
+        <div class="modal-content task-comment-modal">
+            <h2>Agregar Comentario</h2>
+            <form id="taskCommentForm">
+                <div class="form-group">
+                    <label for="taskComment">Comentario:</label>
+                    <textarea id="taskComment" name="taskComment" rows="4" required maxlength="500"></textarea>
+                    <div class="character-counter">
+                        <span id="taskCommentCounter">0/500</span>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" id="confirmCommentBtn" class="confirm-btn">Agregar Comentario</button>
+                    <button type="button" id="cancelCommentBtn" class="cancel-btn">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Note Creation Modal -->
+    <div id="noteModal" class="modal">
+        <div class="modal-content note-modal">
+            <h2 id="noteModalTitle">Nueva Nota</h2>
+            <form id="noteForm">
+                <div class="form-group">
+                    <label for="noteSubject">Asunto:</label>
+                    <input type="text" id="noteSubject" name="noteSubject" required maxlength="100">
+                    <div class="character-counter">
+                        <span id="noteSubjectCounter">0/100</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="noteComments">Comentarios:</label>
+                    <textarea id="noteComments" name="noteComments" rows="5" maxlength="500"></textarea>
+                    <div class="character-counter">
+                        <span id="noteCommentsCounter">0/500</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="shareWithUser">Compartir con usuario (opcional):</label>
+                    <input type="text" id="shareWithUser" name="shareWithUser" placeholder="Escriba nombre o email del usuario">
+                    <div id="userSuggestionsNotes" class="user-suggestions" style="display: none;"></div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" id="saveNoteBtn" class="confirm-btn">Guardar Nota</button>
+                    <button type="button" id="cancelNoteBtn" class="cancel-btn">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- XLSX Library for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
