@@ -64,6 +64,10 @@ async function readDataFile(filePath) {
         return JSON.parse(data);
     } catch (error) {
         console.error(`Error reading ${filePath}:`, error);
+        // Return array for users.json, object for others
+        if (filePath.includes('users.json')) {
+            return [];
+        }
         return {};
     }
 }
