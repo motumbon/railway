@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Middleware
@@ -484,6 +484,11 @@ async function startServer() {
     app.listen(PORT, () => {
         console.log(`Server running on http://localhost:${PORT}`);
         console.log('Data directory:', DATA_DIR);
+        console.log('Available routes:');
+        console.log('- POST /api/register');
+        console.log('- POST /api/login');
+        console.log('- GET /api/user/profile');
+        console.log('- GET /');
     });
 }
 
