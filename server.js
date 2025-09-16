@@ -603,6 +603,170 @@ app.post('/api/activities', authenticateToken, async (req, res) => {
     }
 });
 
+// Names endpoints
+app.get('/api/names', authenticateToken, async (req, res) => {
+    try {
+        const names = await readDataFile(NAMES_FILE);
+        res.json(names[req.user.username] || []);
+    } catch (error) {
+        console.error('Names fetch error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/names', authenticateToken, async (req, res) => {
+    try {
+        const { name } = req.body;
+        
+        if (!name) {
+            return res.status(400).json({ error: 'Name is required' });
+        }
+
+        const names = await readDataFile(NAMES_FILE);
+        
+        if (!names[req.user.username]) {
+            names[req.user.username] = [];
+        }
+
+        // Check if name already exists
+        if (names[req.user.username].includes(name)) {
+            return res.status(400).json({ error: 'Name already exists' });
+        }
+
+        names[req.user.username].push(name);
+        await writeDataFile(NAMES_FILE, names);
+
+        res.status(201).json({ message: 'Name added successfully', name });
+    } catch (error) {
+        console.error('Name creation error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/names/:name', authenticateToken, async (req, res) => {
+    try {
+        const { name } = req.params;
+        
+        const names = await readDataFile(NAMES_FILE);
+        
+        if (!names[req.user.username]) {
+            return res.status(404).json({ error: 'Name not found' });
+        }
+
+        const index = names[req.user.username].indexOf(name);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Name not found' });
+        }
+
+        // Remove name
+        names[req.user.username].splice(index, 1);
+        await writeDataFile(NAMES_FILE, names);
+
+        // Clean up related data
+        const activities = await readDataFile(ACTIVITIES_FILE);
+        if (activities[req.user.username] && activities[req.user.username][name]) {
+            delete activities[req.user.username][name];
+            await writeDataFile(ACTIVITIES_FILE, activities);
+        }
+
+        const completedActivities = await readDataFile(COMPLETED_ACTIVITIES_FILE);
+        if (completedActivities[req.user.username] && completedActivities[req.user.username][name]) {
+            delete completedActivities[req.user.username][name];
+            await writeDataFile(COMPLETED_ACTIVITIES_FILE, completedActivities);
+        }
+
+        const institutions = await readDataFile(INSTITUTIONS_FILE);
+        if (institutions[req.user.username] && institutions[req.user.username][name]) {
+            delete institutions[req.user.username][name];
+            await writeDataFile(INSTITUTIONS_FILE, institutions);
+        }
+
+        res.json({ message: 'Name deleted successfully' });
+    } catch (error) {
+        console.error('Name deletion error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Institutions endpoints
+app.get('/api/institutions/:name', authenticateToken, async (req, res) => {
+    try {
+        const { name } = req.params;
+        const institutions = await readDataFile(INSTITUTIONS_FILE);
+        
+        const userInstitutions = institutions[req.user.username] || {};
+        res.json(userInstitutions[name] || []);
+    } catch (error) {
+        console.error('Institutions fetch error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/institutions', authenticateToken, async (req, res) => {
+    try {
+        const { name, institution } = req.body;
+        
+        if (!name || !institution) {
+            return res.status(400).json({ error: 'Name and institution are required' });
+        }
+
+        const institutions = await readDataFile(INSTITUTIONS_FILE);
+        
+        if (!institutions[req.user.username]) {
+            institutions[req.user.username] = {};
+        }
+        if (!institutions[req.user.username][name]) {
+            institutions[req.user.username][name] = [];
+        }
+
+        // Check if institution already exists for this name
+        if (institutions[req.user.username][name].includes(institution)) {
+            return res.status(400).json({ error: 'Institution already exists for this name' });
+        }
+
+        institutions[req.user.username][name].push(institution);
+        await writeDataFile(INSTITUTIONS_FILE, institutions);
+
+        res.status(201).json({ message: 'Institution added successfully', institution });
+    } catch (error) {
+        console.error('Institution creation error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.delete('/api/institutions/:name/:institution', authenticateToken, async (req, res) => {
+    try {
+        const { name, institution } = req.params;
+        
+        const institutions = await readDataFile(INSTITUTIONS_FILE);
+        
+        if (!institutions[req.user.username] || !institutions[req.user.username][name]) {
+            return res.status(404).json({ error: 'Institution not found' });
+        }
+
+        const index = institutions[req.user.username][name].indexOf(institution);
+        if (index === -1) {
+            return res.status(404).json({ error: 'Institution not found' });
+        }
+
+        // Remove institution
+        institutions[req.user.username][name].splice(index, 1);
+        await writeDataFile(INSTITUTIONS_FILE, institutions);
+
+        // Clean up related activities
+        const activities = await readDataFile(ACTIVITIES_FILE);
+        if (activities[req.user.username] && activities[req.user.username][name] && activities[req.user.username][name][institution]) {
+            delete activities[req.user.username][name][institution];
+            await writeDataFile(ACTIVITIES_FILE, activities);
+        }
+
+        res.json({ message: 'Institution deleted successfully' });
+    } catch (error) {
+        console.error('Institution deletion error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // Serve the main HTML file
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));

@@ -745,69 +745,111 @@ function handleLogout() {
 }
 
 // Name Management Functions
-function loadNames() {
+async function loadNames() {
     const namesList = document.getElementById('namesList');
     if (!namesList) return;
     
     namesList.innerHTML = '';
     
-    if (currentUser && names[currentUser]) {
-        names[currentUser].forEach((name, index) => {
-            const li = document.createElement('li');
-            
-            // Check if this name matches a registered user
-            const linkedUser = users.find(user => user.username === name || user.email === name);
-            
-            if (linkedUser && linkedUser.profilePhoto) {
-                // Create photo element
-                const photo = document.createElement('img');
-                photo.src = linkedUser.profilePhoto;
-                photo.alt = name;
-                photo.className = 'name-item-photo';
-                photo.onerror = () => {
-                    // Hide photo if it fails to load
-                    photo.style.display = 'none';
-                };
-                li.appendChild(photo);
-            }
-            
-            // Create content container
-            const content = document.createElement('div');
-            content.className = 'name-item-content';
-            
-            const textDiv = document.createElement('div');
-            textDiv.className = 'name-item-text';
-            textDiv.textContent = name;
-            
-            content.appendChild(textDiv);
-            li.appendChild(content);
-            
-            li.onclick = () => selectName(name, li);
-            namesList.appendChild(li);
-        });
+    if (!currentUser) {
+        namesList.innerHTML = '<li class="no-names">No hay nombres agregados</li>';
+        return;
     }
+
+    try {
+        // Try to load from server first
+        const response = await fetch('/api/names', {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        if (response.ok) {
+            const serverNames = await response.json();
+            console.log('Names loaded from server:', serverNames);
+            
+            // Update local storage with server data
+            if (!names[currentUser]) {
+                names[currentUser] = [];
+            }
+            names[currentUser] = serverNames;
+            saveToStorage('names', names);
+        } else {
+            console.log('Failed to load names from server, using local storage');
+        }
+    } catch (error) {
+        console.log('Server not available, using local storage:', error);
+    }
+    
+    if (!names[currentUser] || names[currentUser].length === 0) {
+        namesList.innerHTML = '<li class="no-names">No hay nombres agregados</li>';
+        return;
+    }
+    
+    names[currentUser].forEach(name => {
+        const li = document.createElement('li');
+        li.className = 'name-item';
+        
+        const content = document.createElement('div');
+        content.className = 'name-content';
+        
+        const textDiv = document.createElement('div');
+        textDiv.className = 'name-text';
+        textDiv.textContent = name;
+        
+        content.appendChild(textDiv);
+        li.appendChild(content);
+        
+        li.onclick = () => selectName(name, li);
+        namesList.appendChild(li);
+    });
 }
 
-function addName() {
+async function addName() {
     const name = sanitizeInput(nameInput.value);
     
     if (!name) {
-        alert('Por favor, ingresa un nombre válido.');
+        alert('Por favor, ingresa un nombre.');
         return;
     }
     
     if (!currentUser) {
-        alert('Error: Usuario no identificado.');
+        alert('Debes iniciar sesión para agregar nombres.');
         return;
     }
     
-    // Initialize names array for current user if it doesn't exist
+    try {
+        // Try to add to server first
+        const response = await fetch('/api/names', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ name })
+        });
+
+        if (response.ok) {
+            console.log('Name added to server successfully');
+        } else {
+            const errorData = await response.json();
+            if (errorData.error === 'Name already exists') {
+                alert('Este nombre ya existe.');
+                return;
+            }
+            console.log('Server add name failed:', errorData);
+        }
+    } catch (error) {
+        console.log('Server not available, adding to local storage:', error);
+    }
+
+    // Always update local storage as well
     if (!names[currentUser]) {
         names[currentUser] = [];
     }
     
     if (names[currentUser].includes(name)) {
-        alert('Este nombre ya existe en la lista.');
+        alert('Este nombre ya existe.');
         return;
     }
     
@@ -2391,25 +2433,60 @@ function checkUpcomingActivities() {
 }
 
 // Institution Management Functions
-function loadInstitutions(name) {
+async function loadInstitutions(name) {
     if (!currentUser) return;
+    
+    const institutionsList = document.getElementById('institutionsList');
+    if (!institutionsList) return;
+    
+    institutionsList.innerHTML = '';
+
+    try {
+        // Try to load from server first
+        const response = await fetch(`/api/institutions/${encodeURIComponent(name)}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        if (response.ok) {
+            const serverInstitutions = await response.json();
+            console.log('Institutions loaded from server:', serverInstitutions);
+            
+            // Update local storage with server data
+            if (!institutions[currentUser]) {
+                institutions[currentUser] = {};
+            }
+            institutions[currentUser][name] = serverInstitutions;
+            saveToStorage('institutions', institutions);
+        } else {
+            console.log('Failed to load institutions from server, using local storage');
+        }
+    } catch (error) {
+        console.log('Server not available, using local storage:', error);
+    }
     
     if (!institutions[currentUser]) {
         institutions[currentUser] = {};
     }
+    
     if (!institutions[currentUser][name]) {
         institutions[currentUser][name] = [];
     }
     
-    institutionsList.innerHTML = '';
+    const userInstitutions = institutions[currentUser][name];
     
-    institutions[currentUser][name].forEach((institution, index) => {
-        const institutionElement = document.createElement('div');
-        institutionElement.className = 'institution-item';
-        institutionElement.textContent = institution;
-        institutionElement.dataset.index = index;
-        institutionElement.addEventListener('click', () => selectInstitution(name, institution, institutionElement));
-        institutionsList.appendChild(institutionElement);
+    if (userInstitutions.length === 0) {
+        institutionsList.innerHTML = '<li class="no-institutions">No hay instituciones agregadas</li>';
+        return;
+    }
+    
+    userInstitutions.forEach(institution => {
+        const li = document.createElement('li');
+        li.className = 'institution-item';
+        li.textContent = institution;
+        li.onclick = () => selectInstitution(institution, li);
+        institutionsList.appendChild(li);
     });
 }
 
@@ -2518,22 +2595,45 @@ function hideInstitutionModal() {
     institutionForm?.reset();
 }
 
-function handleInstitutionSubmit(e) {
-    e.preventDefault();
-    
+async function addInstitution() {
     const name = sanitizeInput(institutionName.value);
     
     if (!name) {
-        alert('Por favor, ingresa un nombre válido para la institución.');
+        alert('Por favor, ingresa un nombre de institución.');
         return;
     }
     
-    if (!currentUser || !selectedName) {
-        alert('Error: No hay usuario o nombre seleccionado.');
+    if (!selectedName || !currentUser) {
+        alert('Debes seleccionar un nombre primero.');
         return;
     }
     
-    // Initialize institutions structure if needed
+    try {
+        // Try to add to server first
+        const response = await fetch('/api/institutions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ name: selectedName, institution: name })
+        });
+
+        if (response.ok) {
+            console.log('Institution added to server successfully');
+        } else {
+            const errorData = await response.json();
+            if (errorData.error === 'Institution already exists for this name') {
+                alert('Esta institución ya existe para este nombre.');
+                return;
+            }
+            console.log('Server add institution failed:', errorData);
+        }
+    } catch (error) {
+        console.log('Server not available, adding to local storage:', error);
+    }
+
+    // Always update local storage as well
     if (!institutions[currentUser]) {
         institutions[currentUser] = {};
     }
@@ -2542,7 +2642,7 @@ function handleInstitutionSubmit(e) {
     }
     
     if (institutions[currentUser][selectedName].includes(name)) {
-        alert('Esta institución ya existe para este usuario.');
+        alert('Esta institución ya existe para este nombre.');
         return;
     }
     
