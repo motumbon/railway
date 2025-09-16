@@ -1518,58 +1518,123 @@ function hideDeleteConfirmation() {
 }
 
 async function handleAccountDeletion() {
+    if (!currentUser) {
+        alert('No hay usuario activo para eliminar');
+        return;
+    }
+
     try {
         // Try to delete from server first
-        const response = await fetch('/api/user/delete', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-        });
+        console.log('Attempting to delete account from server...');
+        const token = localStorage.getItem('token');
+        
+        if (token) {
+            const response = await fetch('/api/user/delete', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
 
-        if (response.ok) {
-            console.log('Account deleted from server successfully');
+            if (response.ok) {
+                console.log('Account deleted from server successfully');
+            } else {
+                const errorData = await response.json();
+                console.log('Server deletion failed:', errorData);
+            }
         } else {
-            console.log('Server deletion failed, proceeding with local deletion');
+            console.log('No token found, skipping server deletion');
         }
     } catch (error) {
         console.log('Server not available, proceeding with local deletion:', error);
     }
 
     // Always perform local cleanup regardless of server response
+    console.log('Performing local cleanup for user:', currentUser);
+    
+    // Load current data
+    users = loadFromStorage('users') || [];
+    names = loadFromStorage('names') || {};
+    activities = loadFromStorage('activities') || {};
+    completedActivities = loadFromStorage('completedActivities') || {};
+    institutions = loadFromStorage('institutions') || {};
+    activeTasks = loadFromStorage('activeTasks') || {};
+    completedTasks = loadFromStorage('completedTasks') || {};
+    notifications = loadFromStorage('notifications') || {};
+    personalNotes = loadFromStorage('personalNotes') || {};
+    
     // Remove user from users array
     const userIndex = users.findIndex(u => u.username === currentUser);
     if (userIndex !== -1) {
         users.splice(userIndex, 1);
         saveToStorage('users', users);
+        console.log('User removed from users array');
     }
     
-    // Remove user from names list if present
-    const nameIndex = names.indexOf(currentUser);
-    if (nameIndex !== -1) {
-        names.splice(nameIndex, 1);
+    // Remove user data from all storage objects
+    if (names[currentUser]) {
+        delete names[currentUser];
         saveToStorage('names', names);
     }
     
-    // Remove user's activities from all institutions
-    Object.keys(activities).forEach(key => {
-        if (key === currentUser || key.startsWith(currentUser + '_')) {
-            delete activities[key];
-        }
-    });
-    saveToStorage('activities', activities);
+    if (activities[currentUser]) {
+        delete activities[currentUser];
+        saveToStorage('activities', activities);
+    }
     
-    // Clear current user and redirect to login
+    if (completedActivities[currentUser]) {
+        delete completedActivities[currentUser];
+        saveToStorage('completedActivities', completedActivities);
+    }
+    
+    if (institutions[currentUser]) {
+        delete institutions[currentUser];
+        saveToStorage('institutions', institutions);
+    }
+    
+    if (activeTasks[currentUser]) {
+        delete activeTasks[currentUser];
+        saveToStorage('activeTasks', activeTasks);
+    }
+    
+    if (completedTasks[currentUser]) {
+        delete completedTasks[currentUser];
+        saveToStorage('completedTasks', completedTasks);
+    }
+    
+    if (notifications[currentUser]) {
+        delete notifications[currentUser];
+        saveToStorage('notifications', notifications);
+    }
+    
+    if (personalNotes[currentUser]) {
+        delete personalNotes[currentUser];
+        saveToStorage('personalNotes', personalNotes);
+    }
+    
+    // Clear shared notes involving this user
+    let sharedNotesStorage = loadFromStorage('sharedNotesStorage') || [];
+    sharedNotesStorage = sharedNotesStorage.filter(note => 
+        note.sharedBy !== currentUser && note.sharedWith !== currentUser
+    );
+    saveToStorage('sharedNotesStorage', sharedNotesStorage);
+    
+    console.log('All user data cleaned up successfully');
+    
+    // Clear current user session
+    const deletedUser = currentUser;
     currentUser = null;
     localStorage.removeItem('currentUser');
     localStorage.removeItem('token');
+    
+    // Close modal and redirect
     hideDeleteConfirmation();
     showLogin();
     
     // Show confirmation message
     setTimeout(() => {
-        showSuccess(loginError, 'Cuenta eliminada exitosamente.');
+        showSuccess(loginError, `Cuenta "${deletedUser}" eliminada exitosamente.`);
     }, 500);
 }
 

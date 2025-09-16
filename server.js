@@ -49,6 +49,16 @@ async function initializeDataFiles() {
             try {
                 await fs.access(file.path);
                 console.log(`File exists: ${file.path}`);
+                // Verify file content is valid JSON and correct structure
+                const content = await fs.readFile(file.path, 'utf8');
+                const parsed = JSON.parse(content);
+                console.log(`File content type for ${file.path}:`, typeof parsed, Array.isArray(parsed) ? 'array' : 'object');
+                
+                // Force correct structure for users.json if it's wrong
+                if (file.path.includes('users.json') && !Array.isArray(parsed)) {
+                    console.log(`Fixing users.json structure - converting object to array`);
+                    await fs.writeFile(file.path, JSON.stringify([], null, 2));
+                }
             } catch {
                 console.log(`Creating file: ${file.path} with default:`, file.default);
                 await fs.writeFile(file.path, JSON.stringify(file.default, null, 2));
@@ -112,14 +122,27 @@ app.post('/api/register', async (req, res) => {
         }
 
         const users = await readDataFile(USERS_FILE);
+        console.log('Registration - Users data loaded:', users);
+        console.log('Registration - Users type:', typeof users);
+        console.log('Registration - Is users array?', Array.isArray(users));
+        
+        // Ensure users is an array
+        if (!Array.isArray(users)) {
+            console.error('CRITICAL: users is not an array in registration, forcing empty array');
+            const emptyUsers = [];
+            await writeDataFile(USERS_FILE, emptyUsers);
+            // Continue with empty array
+        }
+        
+        const usersArray = Array.isArray(users) ? users : [];
         
         // Check if user already exists
-        if (users.find(user => user.username === username)) {
+        if (usersArray.find(user => user.username === username)) {
             return res.status(400).json({ error: 'Username already exists' });
         }
 
         // Check if email already exists
-        if (users.find(user => user.email === email)) {
+        if (usersArray.find(user => user.email === email)) {
             return res.status(400).json({ error: 'Email already registered' });
         }
 
@@ -135,8 +158,8 @@ app.post('/api/register', async (req, res) => {
             updatedAt: new Date().toISOString()
         };
 
-        users.push(newUser);
-        await writeDataFile(USERS_FILE, users);
+        usersArray.push(newUser);
+        await writeDataFile(USERS_FILE, usersArray);
 
         res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
@@ -154,9 +177,17 @@ app.post('/api/login', async (req, res) => {
         }
 
         const users = await readDataFile(USERS_FILE);
-        console.log('Users data loaded:', users);
-        console.log('Users type:', typeof users);
-        console.log('Is users array?', Array.isArray(users));
+        console.log('Login - Users data loaded:', users);
+        console.log('Login - Users type:', typeof users);
+        console.log('Login - Is users array?', Array.isArray(users));
+        
+        // Ensure users is an array
+        if (!Array.isArray(users)) {
+            console.error('CRITICAL: users is not an array in login, forcing empty array');
+            const emptyUsers = [];
+            await writeDataFile(USERS_FILE, emptyUsers);
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
         
         // Find user by username or email
         const user = users.find(u => u.username === username || u.email === username);
