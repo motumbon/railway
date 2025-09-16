@@ -4,8 +4,9 @@ let authToken = localStorage.getItem('authToken');
 
 // Check if we're running with backend support
 function hasBackendSupport() {
-    return window.location.protocol !== 'file:' && 
-           (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    // Always return true for Railway deployment
+    // Railway serves the app from the same domain as the API
+    return window.location.protocol !== 'file:';
 }
 
 // API utility functions
@@ -57,15 +58,18 @@ async function apiRequest(endpoint, options = {}) {
 // Authentication API with localStorage fallback
 async function apiLogin(username, password) {
     try {
+        console.log('🔄 Attempting server login for:', username);
         const response = await apiRequest('/login', {
             method: 'POST',
             body: JSON.stringify({ username, password })
         });
         
+        console.log('✅ Server login successful:', response);
         authToken = response.token;
         localStorage.setItem('authToken', authToken);
         return response;
     } catch (error) {
+        console.log('❌ Server login failed, using localStorage fallback:', error.message);
         // Fallback to localStorage authentication
         return loginWithLocalStorage(username, password);
     }
@@ -73,11 +77,15 @@ async function apiLogin(username, password) {
 
 async function apiRegister(username, email, password) {
     try {
-        return await apiRequest('/register', {
+        console.log('🔄 Attempting server registration for:', username);
+        const result = await apiRequest('/register', {
             method: 'POST',
             body: JSON.stringify({ username, email, password })
         });
+        console.log('✅ Server registration successful:', result);
+        return result;
     } catch (error) {
+        console.log('❌ Server registration failed, using localStorage fallback:', error.message);
         // Fallback to localStorage registration
         return registerWithLocalStorage(username, email, password);
     }
