@@ -178,8 +178,10 @@ app.post('/api/login', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Login error details:', error);
+        console.error('Error stack:', error.stack);
+        console.error('Request body:', req.body);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 });
 

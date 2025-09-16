@@ -336,9 +336,19 @@ function saveToStorage(key, data) {
 function loadFromStorage(key) {
     try {
         const data = localStorage.getItem(key);
-        return data ? JSON.parse(data) : null;
+        if (!data) return null;
+        
+        // Handle case where data is not valid JSON
+        if (data.trim() === '' || data === 'undefined' || data === 'null') {
+            return null;
+        }
+        
+        return JSON.parse(data);
     } catch (error) {
-        console.error('Error loading from localStorage:', error);
+        console.error(`Error loading from localStorage for key "${key}":`, error);
+        console.error('Invalid data:', localStorage.getItem(key));
+        // Clear invalid data
+        localStorage.removeItem(key);
         return null;
     }
 }
