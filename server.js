@@ -48,7 +48,9 @@ async function initializeDataFiles() {
         for (const file of files) {
             try {
                 await fs.access(file.path);
+                console.log(`File exists: ${file.path}`);
             } catch {
+                console.log(`Creating file: ${file.path} with default:`, file.default);
                 await fs.writeFile(file.path, JSON.stringify(file.default, null, 2));
             }
         }
@@ -152,6 +154,9 @@ app.post('/api/login', async (req, res) => {
         }
 
         const users = await readDataFile(USERS_FILE);
+        console.log('Users data loaded:', users);
+        console.log('Users type:', typeof users);
+        console.log('Is users array?', Array.isArray(users));
         
         // Find user by username or email
         const user = users.find(u => u.username === username || u.email === username);
@@ -193,7 +198,7 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
     try {
         const users = await readDataFile(USERS_FILE);
-        const user = users[req.user.username];
+        const user = users.find(u => u.username === req.user.username);
         
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
@@ -210,7 +215,8 @@ app.get('/api/user/profile', authenticateToken, async (req, res) => {
 app.put('/api/user/profile', authenticateToken, async (req, res) => {
     try {
         const users = await readDataFile(USERS_FILE);
-        const user = users[req.user.username];
+        const userIndex = users.findIndex(u => u.username === req.user.username);
+        const user = users[userIndex];
         
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
@@ -225,13 +231,103 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
             updatedAt: new Date().toISOString()
         };
 
-        users[req.user.username] = updatedUser;
+        users[userIndex] = updatedUser;
         await writeDataFile(USERS_FILE, users);
 
         const { password, ...userProfile } = updatedUser;
         res.json(userProfile);
     } catch (error) {
         console.error('Profile update error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// Delete user account endpoint
+app.delete('/api/user/delete', authenticateToken, async (req, res) => {
+    try {
+        const users = await readDataFile(USERS_FILE);
+        const userIndex = users.findIndex(u => u.username === req.user.username);
+        
+        if (userIndex === -1) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Remove user from users array
+        users.splice(userIndex, 1);
+        await writeDataFile(USERS_FILE, users);
+
+        // Clean up user data from other files
+        try {
+            // Remove personal notes
+            const personalNotes = await readDataFile(PERSONAL_NOTES_FILE);
+            if (personalNotes[req.user.username]) {
+                delete personalNotes[req.user.username];
+                await writeDataFile(PERSONAL_NOTES_FILE, personalNotes);
+            }
+
+            // Remove shared notes where user is involved
+            const sharedNotes = await readDataFile(SHARED_NOTES_FILE);
+            const filteredSharedNotes = sharedNotes.filter(note => 
+                note.sharedBy !== req.user.username && note.sharedWith !== req.user.username
+            );
+            await writeDataFile(SHARED_NOTES_FILE, filteredSharedNotes);
+
+            // Remove activities
+            const activities = await readDataFile(ACTIVITIES_FILE);
+            if (activities[req.user.username]) {
+                delete activities[req.user.username];
+                await writeDataFile(ACTIVITIES_FILE, activities);
+            }
+
+            // Remove completed activities
+            const completedActivities = await readDataFile(COMPLETED_ACTIVITIES_FILE);
+            if (completedActivities[req.user.username]) {
+                delete completedActivities[req.user.username];
+                await writeDataFile(COMPLETED_ACTIVITIES_FILE, completedActivities);
+            }
+
+            // Remove tasks
+            const tasks = await readDataFile(TASKS_FILE);
+            if (tasks[req.user.username]) {
+                delete tasks[req.user.username];
+                await writeDataFile(TASKS_FILE, tasks);
+            }
+
+            // Remove completed tasks
+            const completedTasks = await readDataFile(COMPLETED_TASKS_FILE);
+            if (completedTasks[req.user.username]) {
+                delete completedTasks[req.user.username];
+                await writeDataFile(COMPLETED_TASKS_FILE, completedTasks);
+            }
+
+            // Remove notifications
+            const notifications = await readDataFile(NOTIFICATIONS_FILE);
+            if (notifications[req.user.username]) {
+                delete notifications[req.user.username];
+                await writeDataFile(NOTIFICATIONS_FILE, notifications);
+            }
+
+            // Remove names
+            const names = await readDataFile(NAMES_FILE);
+            if (names[req.user.username]) {
+                delete names[req.user.username];
+                await writeDataFile(NAMES_FILE, names);
+            }
+
+            // Remove institutions
+            const institutions = await readDataFile(INSTITUTIONS_FILE);
+            if (institutions[req.user.username]) {
+                delete institutions[req.user.username];
+                await writeDataFile(INSTITUTIONS_FILE, institutions);
+            }
+        } catch (cleanupError) {
+            console.error('Error during user data cleanup:', cleanupError);
+            // Continue with success response even if cleanup partially failed
+        }
+
+        res.json({ message: 'Account deleted successfully' });
+    } catch (error) {
+        console.error('Account deletion error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

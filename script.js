@@ -1517,7 +1517,27 @@ function hideDeleteConfirmation() {
     confirmModal.classList.remove('show');
 }
 
-function handleAccountDeletion() {
+async function handleAccountDeletion() {
+    try {
+        // Try to delete from server first
+        const response = await fetch('/api/user/delete', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        if (response.ok) {
+            console.log('Account deleted from server successfully');
+        } else {
+            console.log('Server deletion failed, proceeding with local deletion');
+        }
+    } catch (error) {
+        console.log('Server not available, proceeding with local deletion:', error);
+    }
+
+    // Always perform local cleanup regardless of server response
     // Remove user from users array
     const userIndex = users.findIndex(u => u.username === currentUser);
     if (userIndex !== -1) {
@@ -1543,6 +1563,7 @@ function handleAccountDeletion() {
     // Clear current user and redirect to login
     currentUser = null;
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('token');
     hideDeleteConfirmation();
     showLogin();
     
