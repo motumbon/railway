@@ -33,7 +33,7 @@ async function initializeDataFiles() {
         await fs.mkdir(DATA_DIR, { recursive: true });
         
         const files = [
-            { path: USERS_FILE, default: {} },
+            { path: USERS_FILE, default: [] },
             { path: PERSONAL_NOTES_FILE, default: {} },
             { path: SHARED_NOTES_FILE, default: [] },
             { path: ACTIVITIES_FILE, default: {} },
@@ -108,13 +108,12 @@ app.post('/api/register', async (req, res) => {
         const users = await readDataFile(USERS_FILE);
         
         // Check if user already exists
-        if (users[username]) {
+        if (users.find(user => user.username === username)) {
             return res.status(400).json({ error: 'Username already exists' });
         }
 
         // Check if email already exists
-        const existingUser = Object.values(users).find(user => user.email === email);
-        if (existingUser) {
+        if (users.find(user => user.email === email)) {
             return res.status(400).json({ error: 'Email already registered' });
         }
 
@@ -130,7 +129,7 @@ app.post('/api/register', async (req, res) => {
             updatedAt: new Date().toISOString()
         };
 
-        users[username] = newUser;
+        users.push(newUser);
         await writeDataFile(USERS_FILE, users);
 
         res.status(201).json({ message: 'User registered successfully' });
@@ -151,10 +150,7 @@ app.post('/api/login', async (req, res) => {
         const users = await readDataFile(USERS_FILE);
         
         // Find user by username or email
-        let user = users[username];
-        if (!user) {
-            user = Object.values(users).find(u => u.email === username);
-        }
+        const user = users.find(u => u.username === username || u.email === username);
 
         if (!user) {
             return res.status(401).json({ error: 'Invalid credentials' });
